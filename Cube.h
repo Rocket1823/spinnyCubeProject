@@ -143,6 +143,11 @@ class cube{
             roll *= 2*M_PI/360;
 
             for(auto edge:edges){
+                for(auto point:edge->points){
+                    rYaw(yaw, point);
+                    rPitch(pitch, point);
+                    rRoll(roll, point);
+                }
             }
         }
 
@@ -173,6 +178,11 @@ class cube{
                 cout << endl;
             }
         }
+
+        vector<uint64_t> flatten(){
+
+        }
+
 // TODO
 //FIXME
         friend ostream& operator<<(ostream& os, cube& rhs){
