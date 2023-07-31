@@ -22,6 +22,14 @@ class cube{
                 os << rhs.x << ", " << rhs.y << ", " << rhs.z;
                 return os;
             }
+
+            friend Point operator-(Point &lhs, Point &rhs){
+                return Point(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z);
+            }
+
+            friend Point operator+(Point &lhs, Point &rhs){
+                return Point(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z);
+            }
         };
 
         // The edges are what will end up being drawn
@@ -124,19 +132,6 @@ class cube{
             point->z = z*cos(theta) + y*sin(theta);
         }
 
-        void rotateVertices(double yaw, double pitch, double roll){
-            yaw *= 2*M_PI/360;
-            pitch *= 2*M_PI/360;
-            roll *= 2*M_PI/360;
-
-            for(int i = 0; i < 8; ++i){
-                Point *point = vertices[i];
-                rYaw(yaw, point);
-                rPitch(pitch, point);
-                rRoll(roll, point);
-            }
-        }
-
         void rotateEdges(double yaw, double pitch, double roll){
             yaw *= 2*M_PI/360;
             pitch *= 2*M_PI/360;
@@ -151,12 +146,34 @@ class cube{
             }
         }
 
+        pair<double, double> projectPoint(Point* p){
+            //Constants
+            Point* camPos = new Point(0, 8, -15);
+            double roll = -10;
+            double pitch = 0;
+            double yaw = 0;
+            double viewAngle = 90 /** angle in degrees */ *(2*M_PI/360);
+
+            //This creates a point the has cordinates relative to the position of the camera
+            Point* relativePos = new Point((*p) - *camPos);
+            rRoll(roll, relativePos);
+            rPitch(pitch, relativePos);
+            rYaw(yaw, relativePos);
+
+            //Once the point has been shifted to be relative to the camera it can be projected onto the display surface
+            double x = relativePos->x/(relativePos->z*tan(viewAngle/2));
+            double y = relativePos->y/(relativePos->z*tan(viewAngle/2));
+            delete relativePos;
+            delete camPos;
+            return pair<double, double>(x, y);
+        }
+
     public:
         cube():cube(10){}
 
         cube(int length):sideLength(length){
             createVertices();
-            generateEdges(10);
+            generateEdges(50);
         }
 
         void printVertices(){
@@ -179,8 +196,40 @@ class cube{
             }
         }
 
-        vector<uint64_t> flatten(){
+        void printFlatVertices(){
+            for(int i = 0; i < 8; ++i){
+                auto cord = projectPoint(vertices[i]);
+                cout << "x: " << cord.first << ", y: " << cord.second << endl;
+            }
+            cout << endl;
+        }
+        
+        void printFlatEdges(){
+            for(auto edge:edges){
+                for(auto point:edge->points){
+                    pair<double, double> pos2d = projectPoint(point);
+                    cout << pos2d.first << ',' << pos2d.second << " : ";
+                }
+                cout << endl;
+            }
+        }
 
+        vector<uint64_t> genereateGraphics(int res){
+            vector<uint64_t> cords(64, 0);
+            for(auto edge:edges){
+                for(auto point:edge->points){
+                    pair<double, double> pos2d = projectPoint(point);
+                    if(abs(pos2d.first) > 1.0+1e-9 || abs(pos2d.second) > 1.0+1e-9) continue;
+                    pos2d.second = pos2d.second>=1.0 ? 63 : (int)((pos2d.second + 1)*32);
+                    pos2d.first = pos2d.first>=1.0 ? 63 : (int)((pos2d.first+ 1)*32);
+                    cords[pos2d.second] = cords[pos2d.second] | (uint64_t)pow(2, pos2d.first);
+                }
+            }
+            return cords;
+        }
+
+        void rotate(double roll, double pitch, double yaw){
+            rotateEdges(yaw, pitch, roll);
         }
 
 // TODO
